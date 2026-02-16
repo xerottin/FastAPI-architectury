@@ -61,6 +61,10 @@ class Settings(BaseSettings):
     # minio buckets
     minio_bucket: str = "minio_bucket"
 
+    # redis
+
+    redis_url: str = "redis://localhost:6379"
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore", env_file_encoding="utf-8")
 
 
