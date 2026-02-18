@@ -25,7 +25,6 @@ logger = logging.getLogger(__name__)
 request_id_ctx: ContextVar[str] = ContextVar("request_id", default="-")
 
 
-
 # ── Sentry ───────────────────────────────────────────────────────────
 def init_sentry() -> None:
     if settings.environment != "production":
