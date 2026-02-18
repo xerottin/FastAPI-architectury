@@ -30,6 +30,12 @@ async def upload_multiple_photos(
         results.append(result)
     return results
 
+@router.get("/")
+def list_photos(
+    prefix: str = Query("", description="Filter by prefix"),
+    minio: "MinioService" = Depends(get_minio_service),
+):
+    return minio.list_files(prefix=prefix)
 
 @router.get("/download/{object_name:path}")
 def download_photo(
@@ -55,11 +61,3 @@ def delete_photo(
 ):
     minio.delete_file(object_name)
     return {"detail": "Deleted", "object_name": object_name}
-
-
-@router.get("/")
-def list_photos(
-    prefix: str = Query("", description="Filter by prefix"),
-    minio: "MinioService" = Depends(get_minio_service),
-):
-    return minio.list_files(prefix=prefix)

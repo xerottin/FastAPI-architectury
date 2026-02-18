@@ -7,8 +7,8 @@ from contextvars import ContextVar
 import sentry_sdk
 from api import router as api_router
 from core.config import settings
+from core.dependencies import get_minio_service
 from core.exceptions import AppException
-from core.minio import MinioService
 from db.session import async_session
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,32 +24,6 @@ logger = logging.getLogger(__name__)
 # ── Context var for request correlation ID ───────────────────────────
 request_id_ctx: ContextVar[str] = ContextVar("request_id", default="-")
 
-
-# ── Rate limiter (simple in-memory, per-IP) ──────────────────────────
-class RateLimiter:
-    """Simple sliding-window rate limiter per client IP."""
-
-    def __init__(
-        self,
-        max_requests: int = settings.rate_limit_max_requests,
-        window_seconds: int = settings.rate_limit_window_seconds,
-    ):
-        self._max_requests = max_requests
-        self._window = window_seconds
-        self._hits: dict[str, list[float]] = {}
-
-    def is_allowed(self, client_ip: str) -> bool:
-        now = time.monotonic()
-        timestamps = self._hits.setdefault(client_ip, [])
-        # Drop expired entries
-        timestamps[:] = [t for t in timestamps if now - t < self._window]
-        if len(timestamps) >= self._max_requests:
-            return False
-        timestamps.append(now)
-        return True
-
-
-rate_limiter = RateLimiter()
 
 
 # ── Sentry ───────────────────────────────────────────────────────────
@@ -73,7 +47,7 @@ def init_sentry() -> None:
 # ── Service readiness flags (graceful degradation) ───────────────────
 _service_status: dict[str, bool] = {
     "database": True,
-    "minio": True,
+    "minio": False,
 }
 
 
@@ -81,7 +55,7 @@ _service_status: dict[str, bool] = {
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle: startup and shutdown."""
-    logger.info("🚀 Application starting up...")
+    logger.info("Application starting up...")
     init_sentry()
     logger.info("Sentry initialized")
 
@@ -90,24 +64,23 @@ async def lifespan(app: FastAPI):
         async with async_session.begin() as conn:
             await conn.execute(text("SELECT 1"))
         _service_status["database"] = True
-        logger.info("✅ Database connection OK")
+        logger.info("Database connection OK")
     except Exception as e:
-        logger.error("❌ Database connection failed: %s", e)
+        logger.error("Database connection failed: %s", e)
         raise
 
-    # MINIO (non-critical — degradable)
     try:
-        minio_client = MinioService.get_minio_client()
-        MinioService.init_bucket(
-            minio_client,
-            settings.minio_bucket_cards,
-            auto_public=True,
-        )
+        minio_client = get_minio_service()
+        # MinioService.init_bucket(
+        #     minio_client,
+        #     settings.minio_bucket,
+        #     auto_public=True,
+        # )
         _service_status["minio"] = True
-        logger.info("✅ MinIO buckets ready")
+        logger.info("MinIO buckets ready")
     except Exception as e:
         _service_status["minio"] = False
-        logger.warning("⚠️ MinIO startup failed (degraded mode): %s", e)
+        logger.warning("MinIO startup failed (degraded mode): %s", e)
     yield
 
 
@@ -156,22 +129,6 @@ async def request_logging_middleware(request: Request, call_next):
 
     client_ip = request.client.host if request.client else "unknown"
 
-    # Rate limiting
-    if not settings.debug and not rate_limiter.is_allowed(client_ip):
-        logger.warning(
-            "🚫 Rate limit exceeded for %s on %s %s",
-            client_ip,
-            request.method,
-            request.url.path,
-            extra={"request_id": request_id},
-        )
-        return AppException(
-                code="TooManyRequests",
-                i18n_key="errors.too_many_requests",
-                status_code=429,
-                detail="Too many requests",
-            )
-
 
     start_time = time.perf_counter()
 
@@ -192,7 +149,7 @@ async def request_logging_middleware(request: Request, call_next):
         response = await call_next(request)
     except Exception:
         logger.exception(
-            "❌ Unhandled error on %s %s",
+            "Unhandled error on %s %s",
             request.method,
             request.url.path,
             extra={"request_id": request_id},
@@ -261,7 +218,6 @@ app.include_router(api_router)
 # ── Exception handlers ──────────────────────────────────────────────
 @app.exception_handler(AppException)
 async def app_exception_handler(request: Request, exc: AppException):
-    """Handle custom business exceptions."""
     rid = getattr(request.state, "request_id", "unknown")
     logger.warning(
         "AppException: %s",

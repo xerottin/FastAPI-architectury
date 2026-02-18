@@ -66,14 +66,15 @@ class MinioService:
     def _validate_file(self, file: UploadFile) -> None:
         """Validate file type and size."""
         if file.content_type not in self.ALLOWED_CONTENT_TYPES:
-            raise HTTPException(
+            raise AppException(
+                code="file_type_not_allowed",
+                i18n_key="denied.file_type_not_allowed",
                 status_code=400,
                 detail=f"File type '{file.content_type}' not allowed. "
                        f"Allowed: {', '.join(self.ALLOWED_CONTENT_TYPES)}",
             )
 
     def _generate_object_name(self, filename: str, prefix: str = "") -> str:
-        """Generate a unique object name to avoid collisions."""
         ext = filename.rsplit(".", 1)[-1] if "." in filename else "jpg"
         unique_name = f"{uuid.uuid4().hex}.{ext}"
         return f"{prefix}/{unique_name}" if prefix else unique_name
@@ -184,7 +185,12 @@ class MinioService:
                 self.bucket_name, object_name, expires=expires
             )
         except S3Error as e:
-            raise HTTPException(status_code=500, detail=f"Failed to generate upload URL: {e}")
+            raise AppException(
+                code="minio_server_error",
+                i18n_key="errors.minio_server_error",
+                status_code=500,
+                detail=f"minio_server_error error: {e}",
+            )
 
     def download_file(self, object_name: str) -> bytes:
         """Download a file from MinIO and return its bytes."""
@@ -205,7 +211,12 @@ class MinioService:
             self.client.remove_object(self.bucket_name, object_name)
             return True
         except S3Error as e:
-            raise HTTPException(status_code=500, detail=f"MinIO delete failed: {e}")
+            raise AppException(
+                code="minio_server_error",
+                i18n_key="errors.minio_server_error",
+                status_code=500,
+                detail=f"minio_server_error error: {e}",
+            )
 
     def delete_files(self, object_names: list[str]) -> None:
         """Delete multiple files from MinIO."""
@@ -214,8 +225,11 @@ class MinioService:
         delete_objects = [DeleteObject(name) for name in object_names]
         errors = self.client.remove_objects(self.bucket_name, delete_objects)
         for error in errors:
-            raise HTTPException(
-                status_code=500, detail=f"Failed to delete {error.name}: {error.message}"
+            raise AppException(
+                code="failed_to_delete_objects",
+                i18n_key="errors.failed_to_delete_objects",
+                status_code=500,
+                detail=f"Failed to delete {error.name}: {error.message}",
             )
 
     def file_exists(self, object_name: str) -> bool:

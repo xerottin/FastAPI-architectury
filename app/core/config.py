@@ -5,6 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+
     # Application
     app_name: str = "Zehn Backend"
     app_version: str = "1.0.0"
@@ -30,9 +31,9 @@ class Settings(BaseSettings):
 
     db_host: str = "localhost"
     db_port: int = 5432
-    db_user: str = "macbookpro"
-    db_pass: str = "1111"
-    db_name: str = "zehn_backend_db"
+    db_user: str = "postgres"
+    db_pass: str = "ping1234"
+    db_name: str = "zehn_arch_backend_db"
 
     @property
     def database_url_asyncpg(self):
@@ -57,7 +58,6 @@ class Settings(BaseSettings):
     minio_secret_key: str = "your-secret-key"
     minio_secure: bool = False
     aws_storage_region: str = "us-east-1"
-
     # minio buckets
     minio_bucket: str = "minio_bucket"
 
