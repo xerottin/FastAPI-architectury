@@ -1,6 +1,6 @@
 from sqlalchemy import String, ForeignKey
 
-from app.models.base import BaseModel
+from models.base import BaseModel
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 class Project(BaseModel):

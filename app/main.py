@@ -5,11 +5,11 @@ from contextlib import asynccontextmanager
 from contextvars import ContextVar
 
 import sentry_sdk
-from app.api import router as api_router
-from app.core.config import settings
-from app.core.exceptions import AppException
-from app.core.minio import MinioService
-from app.db.session import async_session
+from api import router as api_router
+from core.config import settings
+from core.exceptions import AppException
+from core.minio import MinioService
+from db.session import async_session
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -73,7 +73,7 @@ def init_sentry() -> None:
 # ── Service readiness flags (graceful degradation) ───────────────────
 _service_status: dict[str, bool] = {
     "database": True,
-    "minio": False,
+    "minio": True,
 }
 
 

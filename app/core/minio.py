@@ -1,4 +1,3 @@
-
 import io
 import uuid
 from datetime import timedelta
@@ -8,12 +7,13 @@ from minio import Minio
 from minio.error import S3Error
 from fastapi import UploadFile, HTTPException
 
+from core.exceptions import AppException
+
 
 class MinioService:
 
     ALLOWED_CONTENT_TYPES = {
         "image/jpeg",
-        "image/jpg",
         "image/png",
         "image/webp",
         "image/gif",
@@ -28,6 +28,7 @@ class MinioService:
         secret_key: str,
         bucket_name: str = "photos",
         secure: bool = False,
+        public_url: str | None = None,
     ):
         self.client = Minio(
             endpoint=endpoint,
@@ -36,6 +37,23 @@ class MinioService:
             secure=secure,
         )
         self.bucket_name = bucket_name
+
+        if public_url:
+            from urllib.parse import urlparse
+
+            parsed = urlparse(public_url)
+            public_secure = parsed.scheme == "https"
+            public_endpoint = parsed.netloc  # e.g. "minio.example.com" or "localhost:9222"
+            self._presign_client = Minio(
+                endpoint=public_endpoint,
+                access_key=access_key,
+                secret_key=secret_key,
+                secure=public_secure,
+                region="us-east-1",  # prevents network call to discover region
+            )
+        else:
+            self._presign_client = self.client
+
         self._ensure_bucket()
 
     def _ensure_bucket(self) -> None:
@@ -66,15 +84,16 @@ class MinioService:
         prefix: str = "",
         custom_name: str | None = None,
     ) -> dict:
-
         self._validate_file(file)
 
         content = await file.read()
         file_size = len(content)
 
         if file_size > self.MAX_FILE_SIZE:
-            raise HTTPException(
-                status_code=400,
+            raise AppException(
+                code="domain_not_found",
+                i18n_key="errors.domain_not_found",
+                status_code=404,
                 detail=f"File too large ({file_size} bytes). Max: {self.MAX_FILE_SIZE} bytes.",
             )
 
@@ -91,7 +110,12 @@ class MinioService:
                 content_type=file.content_type,
             )
         except S3Error as e:
-            raise HTTPException(status_code=500, detail=f"MinIO upload failed: {e}")
+            raise AppException(
+                code="minio_server_error",
+                i18n_key="errors.minio_server_error",
+                status_code=500,
+                detail=f"minio_server_error error: {e}",
+            )
 
         return {
             "object_name": object_name,
@@ -120,7 +144,12 @@ class MinioService:
                 content_type=content_type,
             )
         except S3Error as e:
-            raise HTTPException(status_code=500, detail=f"MinIO upload failed: {e}")
+            raise AppException(
+                code="minio_server_error",
+                i18n_key="errors.minio_server_error",
+                status_code=500,
+                detail=f"minio_server_error error: {e}",
+            )
 
         return {
             "object_name": object_name,
@@ -135,35 +164,40 @@ class MinioService:
     ) -> str:
         """Generate a presigned URL for downloading/viewing a file."""
         try:
-            return self.client.presigned_get_object(
+            return self._presign_client.presigned_get_object(
                 self.bucket_name, object_name, expires=expires
             )
         except S3Error as e:
-            raise HTTPException(status_code=500, detail=f"Failed to generate URL: {e}")
+            raise AppException(
+                code="minio_server_error",
+                i18n_key="errors.minio_server_error",
+                status_code=500,
+                detail=f"minio_server_error error: {e}",
+            )
 
     def get_upload_presigned_url(
         self, object_name: str, expires: timedelta = timedelta(hours=1)
     ) -> str:
         """Generate a presigned URL for direct client-side upload."""
         try:
-            return self.client.presigned_put_object(
+            return self._presign_client.presigned_put_object(
                 self.bucket_name, object_name, expires=expires
             )
         except S3Error as e:
             raise HTTPException(status_code=500, detail=f"Failed to generate upload URL: {e}")
 
     def download_file(self, object_name: str) -> bytes:
+        """Download a file from MinIO and return its bytes."""
         try:
-            with self.client.get_object(self.bucket_name, object_name) as response:
-                return response.read()
-
+            response = self.client.get_object(self.bucket_name, object_name)
+            return response.read()
         except S3Error as e:
             if e.code == "NoSuchKey":
                 raise HTTPException(status_code=404, detail="File not found.")
-            raise HTTPException(
-                status_code=500,
-                detail=f"MinIO download failed: {e}",
-            )
+            raise HTTPException(status_code=500, detail=f"MinIO download failed: {e}")
+        finally:
+            response.close()
+            response.release_conn()
 
     def delete_file(self, object_name: str) -> bool:
         """Delete a file from MinIO."""

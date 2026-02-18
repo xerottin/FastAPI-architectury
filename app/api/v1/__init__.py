@@ -1,5 +1,5 @@
-from app.api.v1 import file
-from app.api.v1 import (
+from api.v1 import file
+from api.v1 import (
     user,
     project,
 )

@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, UploadFile, File, Query
 from fastapi.responses import StreamingResponse
 import io
 
-from app.core.dependencies import get_minio_service
+from core.dependencies import get_minio_service
+from core.minio import MinioService
 
 router = APIRouter()
 
@@ -13,7 +14,6 @@ async def upload_photo(
     prefix: str = Query("", description="Subfolder prefix, e.g. 'avatars'"),
     minio: "MinioService" = Depends(get_minio_service),
 ):
-    """Upload a single photo."""
     result = await minio.upload_file(file, prefix=prefix)
     return result
 
@@ -24,7 +24,6 @@ async def upload_multiple_photos(
     prefix: str = Query("", description="Subfolder prefix"),
     minio: "MinioService" = Depends(get_minio_service),
 ):
-    """Upload multiple photos."""
     results = []
     for file in files:
         result = await minio.upload_file(file, prefix=prefix)
@@ -37,7 +36,6 @@ def download_photo(
     object_name: str,
     minio: "MinioService" = Depends(get_minio_service),
 ):
-    """Download a photo by object name."""
     data = minio.download_file(object_name)
     return StreamingResponse(io.BytesIO(data), media_type="image/jpeg")
 
@@ -47,7 +45,6 @@ def get_photo_url(
     object_name: str,
     minio: "MinioService" = Depends(get_minio_service),
 ):
-    """Get a presigned URL for a photo."""
     return {"url": minio.get_presigned_url(object_name)}
 
 
@@ -56,7 +53,6 @@ def delete_photo(
     object_name: str,
     minio: "MinioService" = Depends(get_minio_service),
 ):
-    """Delete a photo."""
     minio.delete_file(object_name)
     return {"detail": "Deleted", "object_name": object_name}
 
@@ -66,5 +62,4 @@ def list_photos(
     prefix: str = Query("", description="Filter by prefix"),
     minio: "MinioService" = Depends(get_minio_service),
 ):
-    """List all photos in the bucket."""
     return minio.list_files(prefix=prefix)

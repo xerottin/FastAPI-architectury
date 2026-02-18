@@ -4,9 +4,9 @@
 # from starlette import status
 # from sqlalchemy.ext.asyncio import AsyncSession
 #
-# from app.db.session import get_pg_db
-# from app.models import User
-# from app.schemas.user import AuthResponse, UserCreateRequest, UserResponse, UserUpdateRequest
+# from db.session import get_pg_db
+# from models import User
+# from schemas.user import AuthResponse, UserCreateRequest, UserResponse, UserUpdateRequest
 #
 # router = APIRouter()
 #

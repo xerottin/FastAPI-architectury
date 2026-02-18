@@ -1,3 +1,3 @@
-from app.models.base import BaseModel
-from app.models.user import User
-from app.models.project import Project
+from models.base import BaseModel
+from models.user import User
+from models.project import Project

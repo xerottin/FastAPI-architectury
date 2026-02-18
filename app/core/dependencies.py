@@ -1,7 +1,7 @@
 from functools import lru_cache
 
-from app.core.config import settings
-from app.core.minio import MinioService
+from core.config import settings
+from core.minio import MinioService
 
 
 @lru_cache
@@ -13,4 +13,6 @@ def get_minio_service():
         secret_key=settings.minio_secret_key,
         bucket_name=settings.minio_bucket,
         secure=settings.minio_secure,
+        public_url=settings.minio_public_url,
     )
+

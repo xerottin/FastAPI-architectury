@@ -50,9 +50,9 @@ class Settings(BaseSettings):
     openai_api_key: str = "Your open_ai api-key"
 
     # MINIO
-    minio_endpoint: str = "http://localhost:9211"
-    minio_url: str = "http://localhost:9211"
-    minio_public_url: str = "http://localhost:9222"
+
+    minio_endpoint: str = "localhost:9211"
+    minio_public_url: str = "http://localhost:9211"
     minio_access_key: str = "your-access-key"
     minio_secret_key: str = "your-secret-key"
     minio_secure: bool = False
@@ -62,8 +62,20 @@ class Settings(BaseSettings):
     minio_bucket: str = "minio_bucket"
 
     # redis
-
     redis_url: str = "redis://localhost:6379"
+
+    # mongo
+    mongo_db_name: str = ""
+    mongo_uri: str = ""
+
+    # celery
+    celery_broker_url: str = "redis://localhost:6379"
+    celery_result_backend: str = "redis://localhost:6379"
+
+    # celery sentry
+    sentry_dsn_celery: str = ""
+    sentry_traces_sample_rate: str = ""
+    sentry_profiles_sample_rate: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore", env_file_encoding="utf-8")
 
