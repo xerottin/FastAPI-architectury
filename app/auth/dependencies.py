@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from auth.jwt import verify_token
 from core.exceptions import AppException
 from db.session import get_pg_db
