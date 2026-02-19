@@ -32,8 +32,8 @@ class OrmBase(BaseModel):
 
 
 class UserBase(OrmBase):
-    email: str | None = None
     username: str | None = None
+    email: str | None = None
 
 
 # ============================================================
@@ -88,9 +88,6 @@ class UserCreateRequest(BaseModel):
 
 
 class UserUpdateRequest(BaseModel):
-    """
-    Partial update
-    """
 
     email: str | None = None
     username: str | None = None
