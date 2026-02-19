@@ -1,7 +1,6 @@
 import io
 import uuid
 from datetime import timedelta
-from typing import BinaryIO
 
 from minio import Minio
 from minio.error import S3Error
