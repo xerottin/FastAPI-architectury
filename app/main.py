@@ -47,18 +47,18 @@ def init_sentry() -> None:
 _service_status: dict[str, bool] = {
     "database": True,
     "minio": False,
+    "mongodb": False,
+    "redis": False,
 }
 
 
 # ── Lifespan ─────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifecycle: startup and shutdown."""
     logger.info("Application starting up...")
     init_sentry()
     logger.info("Sentry initialized")
 
-    # Startup: DB health check (critical — fail fast)
     try:
         async with async_session.begin() as conn:
             await conn.execute(text("SELECT 1"))

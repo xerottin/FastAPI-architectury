@@ -1,7 +1,7 @@
 from functools import lru_cache
 
 from core.config import settings
-from core.minio import MinioService
+from db.clients.minio import MinioService
 
 
 @lru_cache

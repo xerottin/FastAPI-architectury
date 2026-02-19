@@ -3,7 +3,7 @@ from fastapi.responses import StreamingResponse
 import io
 
 from core.dependencies import get_minio_service
-from core.minio import MinioService
+from db.clients.minio import MinioService
 
 router = APIRouter()
 
