@@ -65,8 +65,8 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379"
 
     # mongo
-    mongo_db_name: str = ""
-    mongo_uri: str = ""
+    mongo_uri: str = "mongodb://root:example@mongo:27017/admin"
+    mongo_db_name: str = "zehn_architectury"
 
     # celery
     celery_broker_url: str = "redis://localhost:6379"
